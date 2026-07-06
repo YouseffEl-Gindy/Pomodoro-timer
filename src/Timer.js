@@ -43,15 +43,26 @@ export default function Timer({ isRunning, setIsRunning }) {
   const playEndSound = useAudio("/sounds/end-alarm-2.mp3");
 
   const intervalRef = useRef(null);
+  const timeRef = useRef(time);
 
-  // Tick down every second while running
+  useEffect(() => {
+    timeRef.current = time;
+  }, [time]);
+
+  // Tick down every second while running, based on wall-clock time so
+  // background-tab timer throttling can't make the countdown run slow.
   useEffect(() => {
     if (!isRunning) return;
 
-    intervalRef.current = setInterval(() => setTime((t) => t - 1), 1000);
+    const endTime = Date.now() + timeRef.current * 1000;
+
+    intervalRef.current = setInterval(() => {
+      const remaining = Math.round((endTime - Date.now()) / 1000);
+      setTime(Math.max(remaining, 0));
+    }, 1000);
 
     return () => clearInterval(intervalRef.current);
-  }, [isRunning, playClickSound]);
+  }, [isRunning]);
 
   // Handle timer reaching zero
   useEffect(() => {
