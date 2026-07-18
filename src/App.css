@@ -18,6 +18,10 @@
   --color-red: #ef4444;
   --color-blue: #3b82f6;
 
+  /* Phase theme (overridden per data-phase on .app; work is the default) */
+  --accent: #22c55e;
+  --glow: rgba(34, 197, 94, 0.18);
+
   /* Typography */
   --font-family:
     system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -38,6 +42,96 @@
   --ring-width: 10px;
 }
 
+/* ─── Phase Theme ────────────────────────────────────────────────────────── */
+
+/* Registering these as <color> lets the browser interpolate them, so the whole
+   page cross-fades between phases instead of snapping. Falls back to an instant
+   change where @property is unsupported. */
+@property --color-bg-from {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #1e293b;
+}
+@property --color-bg-to {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #0f172a;
+}
+@property --accent {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #22c55e;
+}
+/* A darker shade of the accent, only for text (the phase label) so it stays
+   readable on the white card — the bright --accent is fine for large shapes. */
+@property --accent-strong {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #16a34a;
+}
+@property --glow {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(34, 197, 94, 0.18);
+}
+
+.app[data-phase="work"] {
+  --color-bg-from: #1e293b;
+  --color-bg-to: #0f172a;
+  --accent: #22c55e;
+  --accent-strong: #16a34a;
+  --glow: rgba(34, 197, 94, 0.18);
+}
+
+.app[data-phase="shortBreak"] {
+  --color-bg-from: #0c4a6e;
+  --color-bg-to: #082f49;
+  --accent: #38bdf8;
+  --accent-strong: #0284c7;
+  --glow: rgba(56, 189, 248, 0.2);
+}
+
+.app[data-phase="longBreak"] {
+  --color-bg-from: #4c1d95;
+  --color-bg-to: #2e1065;
+  --accent: #8b5cf6;
+  --accent-strong: #7c3aed;
+  --glow: rgba(139, 92, 246, 0.22);
+}
+
+/* Light mode: pale tinted backgrounds instead of deep ones. The card stays
+   white but gains a light border so it still separates from the page. Accents,
+   text and the card's top bar are untouched — they already read on white.
+   Follows the viewer's OS appearance setting. */
+@media (prefers-color-scheme: light) {
+  .app[data-phase="work"] {
+    --color-bg-from: #eef2f7;
+    --color-bg-to: #dbe3ee;
+    --glow: rgba(34, 197, 94, 0.14);
+  }
+
+  .app[data-phase="shortBreak"] {
+    --color-bg-from: #e0f2fe;
+    --color-bg-to: #bae6fd;
+    --glow: rgba(56, 189, 248, 0.18);
+  }
+
+  .app[data-phase="longBreak"] {
+    --color-bg-from: #ede9fe;
+    --color-bg-to: #ddd6fe;
+    --glow: rgba(139, 92, 246, 0.18);
+  }
+
+  .card {
+    border-right: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    border-left: 1px solid var(--color-border);
+    box-shadow:
+      0 12px 30px rgba(15, 23, 42, 0.12),
+      0 0 60px var(--glow);
+  }
+}
+
 /* ─── Reset ──────────────────────────────────────────────────────────────── */
 
 * {
@@ -55,14 +149,27 @@
   justify-content: center;
   align-items: center;
   background: linear-gradient(135deg, var(--color-bg-from), var(--color-bg-to));
+  transition:
+    --color-bg-from 0.8s ease,
+    --color-bg-to 0.8s ease,
+    --accent 0.8s ease,
+    --accent-strong 0.8s ease,
+    --glow 0.8s ease;
 }
 
 .card {
+  position: relative;
   width: 420px;
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   padding: 30px;
-  box-shadow: var(--shadow-card);
+  border-top: 4px solid var(--accent);
+  box-shadow:
+    var(--shadow-card),
+    0 0 70px var(--glow);
+  transition:
+    border-color 0.8s ease,
+    box-shadow 0.8s ease;
 }
 
 .card::before {
@@ -75,11 +182,82 @@
   margin-bottom: 20px;
 }
 
+/* ─── Settings Button ────────────────────────────────────────────────────── */
+
+.btn-settings {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-muted);
+  color: var(--color-text-label);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.btn-settings:hover {
+  transform: none;
+  background: var(--color-ring-track);
+}
+
 /* ─── Timer ──────────────────────────────────────────────────────────────── */
 
 .timer {
   text-align: center;
   margin-bottom: 25px;
+}
+
+.phase-label {
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--accent-strong);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+  transition: color 0.8s ease;
+}
+
+.session-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-label);
+  opacity: 0.7;
+  margin-bottom: 12px;
+}
+
+/* Progress dots — one per work session in the current set. Empty = upcoming,
+   filled = done, haloed = the session currently in progress. */
+.progress-dots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  min-height: 12px;
+  margin-bottom: 16px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: var(--color-ring-track);
+  transition:
+    background 0.4s ease,
+    transform 0.3s ease,
+    box-shadow 0.4s ease;
+}
+
+.dot-done {
+  background: var(--color-green);
+}
+
+.dot-active {
+  background: var(--color-green);
+  transform: scale(1.3);
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25);
 }
 
 .timer-row {
@@ -186,8 +364,11 @@ button:disabled {
 }
 
 .btn-start {
-  background: var(--color-green);
+  background: var(--accent);
   color: white;
+  transition:
+    background 0.8s ease,
+    transform 0.2s ease;
 }
 .btn-pause {
   background: var(--color-amber);
@@ -196,6 +377,10 @@ button:disabled {
 .btn-reset {
   background: var(--color-red);
   color: white;
+}
+.btn-skip {
+  background: var(--color-surface-muted);
+  color: var(--color-text-label);
 }
 
 li button {
@@ -255,4 +440,60 @@ li {
   justify-content: space-between;
   align-items: center;
   font-size: var(--font-size-sm);
+}
+
+/* ─── Settings Panel ─────────────────────────────────────────────────────── */
+
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.settings-panel {
+  width: 340px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-card);
+}
+
+.settings-title {
+  font-size: var(--font-size-md);
+  color: var(--color-text-primary);
+  margin-bottom: 16px;
+}
+
+.settings-note {
+  font-size: var(--font-size-sm);
+  color: var(--color-amber);
+  margin-bottom: 12px;
+}
+
+.settings-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-label);
+}
+
+.settings-field input {
+  width: 90px;
+  flex: none;
+  text-align: center;
+}
+
+.btn-close {
+  width: 100%;
+  margin: 8px 0 0;
+  background: var(--color-green);
+  color: white;
 }
